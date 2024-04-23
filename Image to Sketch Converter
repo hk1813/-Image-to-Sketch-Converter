@@ -1,0 +1,95 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from PIL import Image,ImageTk, ImageEnhance, ImageOps
+
+class ImageToSketchConverter:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Image to Sketch Converter")
+
+        self.image_frame = tk.Frame(self.root)
+        self.image_frame.pack(pady=10)
+
+        self.preview_frame = tk.Frame(self.root)
+        self.preview_frame.pack(pady=10)
+
+        self.upload_button = tk.Button(self.image_frame, text="Upload Image", command=self.upload_image)
+        self.upload_button.pack(side=tk.LEFT, padx=10)
+
+        self.sketch_button = tk.Button(self.image_frame, text="Convert to Sketch", command=self.convert_to_sketch)
+        self.sketch_button.pack(side=tk.LEFT, padx=10)
+
+        self.save_button = tk.Button(self.image_frame, text="Save Sketch", command=self.save_sketch)
+        self.save_button.pack(side=tk.LEFT, padx=10)
+
+        self.line_thickness_scale = tk.Scale(self.preview_frame, from_=1, to=10, orient=tk.HORIZONTAL, label="Line Thickness")
+        self.line_thickness_scale.pack(side=tk.LEFT, padx=10)
+
+        self.contrast_scale = tk.Scale(self.preview_frame, from_=0, to=2, resolution=0.1, orient=tk.HORIZONTAL, label="Contrast")
+        self.contrast_scale.pack(side=tk.LEFT, padx=10)
+
+        self.brightness_scale = tk.Scale(self.preview_frame, from_=0, to=2, resolution=0.1, orient=tk.HORIZONTAL, label="Brightness")
+        self.brightness_scale.pack(side=tk.LEFT, padx=10)
+
+        self.canvas = tk.Canvas(self.root, width=300, height=300)
+        self.canvas.pack()
+
+    def upload_image(self):
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            self.image = Image.open(file_path)
+            self.display_image()
+        else:
+            messagebox.showerror("Error", "No image selected.")
+
+    def display_image(self):
+        self.image.thumbnail((300, 300))
+        self.photo = ImageTk.PhotoImage(self.image)
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
+
+    def convert_to_sketch(self):
+        if not hasattr(self, 'image'):
+            messagebox.showerror("Error", "No image uploaded.")
+            return
+
+        # Convert image to grayscale
+        gray_image = self.image.convert('L')
+
+        # Enhance contrast and brightness
+        contrast_factor = self.contrast_scale.get()
+        brightness_factor = self.brightness_scale.get()
+        enhancer = ImageEnhance.Contrast(gray_image)
+        gray_image = enhancer.enhance(contrast_factor)
+        enhancer = ImageEnhance.Brightness(gray_image)
+        gray_image = enhancer.enhance(brightness_factor)
+
+        # Invert the grayscale image
+        inverted_image = ImageOps.invert(gray_image)
+
+        # Create the sketch
+        self.sketch = inverted_image.point(lambda x: 255 if x < 100 else 0)
+
+        # Display the sketch
+        self.display_sketch(self.sketch)
+
+    def display_sketch(self, sketch):
+        sketch.thumbnail((300, 300))
+        self.sketch_photo = ImageTk.PhotoImage(sketch)
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.sketch_photo)
+
+    def save_sketch(self):
+        if hasattr(self, 'sketch'):
+            file_path = filedialog.asksaveasfilename(defaultextension=".png")
+            if file_path:
+                self.sketch.save(file_path)
+                messagebox.showinfo("Success", "Sketch saved successfully.")
+        else:
+            messagebox.showerror("Error", "No sketch to save.")
+
+def main():
+    root = tk.Tk()
+    app = ImageToSketchConverter(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
